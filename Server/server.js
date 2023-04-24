@@ -3,11 +3,14 @@ const { v4: uuidv4 } = require("uuid");
 const AccessToken = require("twilio").jwt.AccessToken;
 const VideoGrant = AccessToken.VideoGrant;
 const express = require("express");
+const cors = require("cors");
 const app = express();
 const port = 5000;
 
 const meetings = {};
 
+// allow cross-origin requests
+app.use(cors());
 // use the Express JSON middleware
 app.use(express.json());
 
