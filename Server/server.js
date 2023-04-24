@@ -57,6 +57,11 @@ const getAccessToken = (roomName, participantId) => {
   return token.toJwt();
 };
 
+app.post('/test', (req, res) => {
+  console.log(req);
+  res.send(req.body);
+})
+
 app.post("/create-meeting", async (req, res) => {
   // return 400 if the request has an empty body or no meetingName
   if (!req.body || !req.body.meetingName) {
