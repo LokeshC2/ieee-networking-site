@@ -1,11 +1,9 @@
 require("dotenv").config();
-import { v4 as uuidv4 } from "uuid";
-import twilio from "twilio";
-const AccessToken = twilio.jwt.AccessToken;
+const { v4: uuidv4 } = require("uuid");
+const AccessToken = require("twilio").jwt.AccessToken;
 const VideoGrant = AccessToken.VideoGrant;
-const VoiceGrant = AccessToken.VoiceGrant;
-import express from "express";
-import cors from "cors";
+const express = require("express");
+const cors = require("cors");
 const app = express();
 const port = 5000;
 
@@ -42,12 +40,12 @@ const findOrCreateRoom = async (roomName) => {
   }
 };
 
-const getAccessToken = (roomName: string, participantId: string) => {
+const getAccessToken = (roomName, participantId) => {
   // create an access token
   const token = new AccessToken(
-    process.env.TWILIO_ACCOUNT_SID as string,
-    process.env.TWILIO_API_KEY_SID as string,
-    process.env.TWILIO_API_KEY_SECRET as string,
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_API_KEY_SID,
+    process.env.TWILIO_API_KEY_SECRET,
     // generate a random unique identity for this participant
     { identity: participantId }
   );
