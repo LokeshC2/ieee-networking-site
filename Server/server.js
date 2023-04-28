@@ -99,7 +99,7 @@ app.post("/join", async (req, res) => {
   // return 404 if the meetingId is not found
   const meeting = meetings[meetingId];
   if (!meeting) {
-    return res.status(404).send("Meeting not found.");
+    return res.status(404).send("Meeting is not found.");
   }
 
   // return 400 if the request has an empty body or no participant
