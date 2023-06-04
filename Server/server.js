@@ -1,204 +1,207 @@
-require("dotenv").config();
-const { createServer } = require("http");
-const express = require("express");
-const { Server } = require("socket.io");
-const cors = require("cors");
-const fs = require('fs');
+require('dotenv').config();
+const { createServer } = require('http');
+const express = require('express');
+const cors = require('cors');
+const io = require('socket.io');
 
-const { random_digits } = require("./util");
-const { findOrCreateRoom, getAccessToken } = require("./twilio");
+const { findOrCreateRoom, getAccessToken } = require('./twilio');
+
+// const origin = 'http://localhost:5173';
+const origin = '*';
+const port = 5000;
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: "*", methods: ["GET", "POST"] } });
-const port = 5000;
-
-// let meeting url be http://localhost:5000/meeting/<meetingId>
+app.use(cors({ origin: origin }));
+app.use(express.json());
+const socketServer = new io.Server(httpServer, { cors: { origin: origin, methods: ['GET', 'POST'] } });
 
 const meetings = {};
-const participants = {};
 
-// allow cross-origin requests
-app.use(cors());
-// use the Express JSON middleware
-app.use(express.json());
-
-app.route('/test', (req, res) => {
-  console.log(req);
-  if (req.method === 'POST') {
-    console.log(req.body);
-    res.send(req.body);
-  } else {
-    res.send('Hello World!');
-  }
-})
-
-app.post("/create-meeting", async (req, res) => {
+app.post('/create-meeting', async (req, res) => {
   try {
-    // const { meeting, host } = req.body
     const meeting = req.body.meeting;
-
+    const {
+      startTime,
+      shuffles,
+      interval,
+      host
+    } = meeting;
     const meetingId = random_digits(6);
 
-    meeting.status = "scheduled";
-    meeting.matches = [];
+    meeting.status = 'scheduled';
+    meeting.participants = {};
     meeting.lobby = [];
 
     meetings[meetingId] = meeting;
 
+    const now = Date.now();
+
+    setTimeout(() => {
+      openLobby(meetingId);
+    }, startTime - 10 * 1000 - now);
+
+    for (let i = 0; i < meeting.shuffles; i++) {
+      setTimeout(() => {
+        shuffle(meetingId, startTime - now + i * interval);
+      }, startTime - now + i * interval - 1000);
+    }
+
     setTimeout(() => {
       startMeeting(meetingId);
-    }, startTime - Date.now());
+    }, startTime - now - 1000);
 
     setTimeout(() => {
       endMeeting(meetingId);
-    }, endTime - Date.now());
+    }, startTime - now + meeting.shuffles * meeting.interval);
 
     res.send({
       meetingId: meetingId
     });
-  }
-  catch (error) {
-    console.trace(error);
-    res.status(500).send("Error creating meeting.");
-  }
-});
 
-app.post("/join", async (req, res) => {
+  } catch (error) {
+    console.trace(error);
+    res.status(500).send('Error creating meeting.');
+  }
+})
+
+app.post('/join-meeting', async (req, res) => {
   try {
-    const { meetingId, participant } = req.body;
+    const meetingId = req.body.meetingId;
+    const name = req.body.participant.name;
 
     const participantId = random_digits(3);
-    participant.room = "";
-    participant.token = "";
-    participant.history = [];
+    const participant = {
+      name: name,
+      room: null,
+      token: null,
+      history: []
+    };
 
-    meetings[meetingId].participants.push(participantId);
-    participants[participantId] = participant;
+    const meeting = meetings[meetingId];
+    if (!meeting) {
+      throw new Error('Meeting not found.');
+    }
+
+    meeting.participants[participantId] = participant;
 
     res.send({
-      meeting: meetings[meetingId],
-      participantId: participantId,
+      meetingId: meetingId,
+      participantId: participantId
     });
 
-    console.log(`Participant ${participantId} joined meeting ${meetingId}.`);
-    io.to(meetingId).emit("participant-joined", participant);
-  }
-  catch (error) {
+  } catch (error) {
     console.trace(error);
-    res.status(500).send("Error joining meeting.");
+    res.status(500).send('Error joining meeting.');
   }
-});
+})
 
-io.on("connection", (socket) => {
-  console.log("a user connected");
+socketServer.on('connection', (socket) => {
+  console.log('a user connected');
+  socket.emit('connected');
 
-  socket.on("join-meeting", (meetingId, participantId) => {
-    console.log(`Participant ${participantId} joined meeting ${meetingId}.`);
-    socket.join(meetingId);
-    meetings[meetingId].lobby.push(participantId);
-    participants[participantId].socket = socket;
+  socket.on('join-meeting', async (meetingId, participantId) => {
+    try {
+      const meeting = meetings[meetingId];
+      if (!meeting) {
+        throw new Error('Meeting not found.');
+      }
+
+      const participant = meeting.participants[participantId];
+      if (!participant) {
+        throw new Error('Participant not found.');
+      }
+
+      socket.join([meetingId, participantId]);
+
+      meeting.lobby.push(participantId);
+
+      socket.emit('joined-meeting', {
+        meetingId: meetingId,
+        participantId: participantId,
+        meeting: meeting
+      });
+
+      socket.to(meetingId).emit('participant-joined', {
+        participantId: participantId,
+        participant: participant
+      });
+
+    } catch (error) {
+      console.trace(error);
+      socket.emit('error', error.message);
+    }
   });
 
-  socket.on("join-room", (meetingId, participantId) => {
-    console.log(`Participant ${participantId} joined room ${participants[participantId].room}.`);
-    meetings[meetingId].lobby = meetings[meetingId].lobby.filter(
-      (p) => p.id !== participantId
-    );
-    socket.join(participants[participantId].room);
-    socket.emit("room-joined", {
-      roomName: participants[participantId].room,
-      token: participants[participantId].token,
-    });
+  socket.on('check-update', async (meetingId, participantId) => {
+    try {
+      const meeting = meetings[meetingId];
+      if (!meeting) {
+        throw new Error('Meeting not found.');
+      }
+
+      const participant = meeting.participants[participantId];
+      if (!participant) {
+        throw new Error('Participant not found.');
+      }
+
+      socket.emit('update', {
+        meetingId: meetingId,
+        participantId: participantId,
+        status: meeting.status,
+        room: participant.room,
+        token: participant.token
+      });
+    } catch (error) {
+      console.trace(error);
+      socket.emit('error', error.message);
+    }
   });
 
-  socket.on("end-room", (meetingId, participantId) => {
-    participants[participantId].room = "";
-    participants[participantId].token = "";
-    meetings[meetingId].lobby.push(participantId);
-    findRoom(meetingId, participantId);
-  })
-
-  socket.on("disconnect", () => {
-    console.log("user disconnected");
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
   });
 });
 
-httpServer.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-});
-
+function openLobby(meetingId) {
+  meetings[meetingId].status = 'started - waiting for participants';
+  socketServer.to(meetingId).emit('meeting-started');
+}
 
 function startMeeting(meetingId) {
-  meetings[meetingId].status = "started";
-  io.to(meetingId).emit("meeting-started");
-  console.log(`Meeting ${meetingId} started.`);
-
-  setInterval(() => {
-    if (meetings[meetingId].status == "ended") {
-      clearInterval(this);
-    } else {
-      io.to(meetingId).emit("new-shuffle", shuffled(meetings[meetingId].participants));
-    }
-  }, meetings[meetingId].shuffleInterval * 1000);
-
-  setTimeout(() => {
-    endMeeting(meetingId);
-  }, meetings[meetingId].details.endTime - Date.now());
+  meetings[meetingId].status = 'started - in progress';
+  socketServer.to(meetingId).emit('meeting-started');
 }
 
 function endMeeting(meetingId) {
-  console.log(`Meeting ${meetingId} ended.`);
-  meetings[meetingId].status = "ended";
-  io.to(meetingId).emit("meeting-ended");
+  meetings[meetingId].status = 'ended';
+  socketServer.to(meetingId).emit('meeting-ended');
 }
 
-async function findRoom(meetingId, participantId) {
-  const participant = participants[participantId];
-  const roomName = `${meetingId}-${participantId}-${random_digits(3)}`
+async function shuffle(meetingId) {
+  const meeting = meetings[meetingId];
+  const lobby = meeting.lobby;
+  const participants = meeting.participants;
+  const shuffled = lobby.sort(() => Math.random());
 
-  let room;
-
-  if (meetings[meetingId].status != "started") {
-    participant.socket.emit("meeting-not-started");
-    return;
+  for (let i = 0; i < shuffled.length; i++) {
+    const participantId = shuffled[i];
+    const participant = participants[participantId];
+    const roomName = random_digits(3);
+    participant.room = await findOrCreateRoom(roomName);
+    participant.token = getAccessToken(meetingId, participantId);
+    socketServer.to(participantId).emit('update', {
+      newRoom: participant.room,
+      newToken: participant.token,
+      changeTime: Date.now()
+    });
   }
-
-  const otherParticipant = meetings[meetingId].lobby.find(
-    (p) => p.id !== participantId && !p.history.includes(participantId)
-  );
-
-  if (!otherParticipant) {
-    // wait for other participant
-    participant.socket.emit("waiting-for-participant");
-    return;
-  }
-
-  //remove participants from lobby
-  meetings[meetingId].lobby = meetings[meetingId].lobby.filter(
-    (p) => p.id !== participantId && p.id !== otherParticipant.id
-  );
-  
-  room = await findOrCreateRoom(roomName);
-  console.log(`Room ${roomName} created.`);
-
-  participant.room = room.sid;
-  otherParticipant.room = room.sid;
-  participant.token = getAccessToken(roomName, participantId);
-  otherParticipant.token = getAccessToken(roomName, otherParticipant.id);
-
-  participant.socket.emit("room-found", {
-    roomName: roomName,
-    token: participant.token,
-  });
-
-  otherParticipant.socket.emit("room-found", {
-    roomName: roomName,
-    token: otherParticipant.token,
-  });
-
-  //add to history
-  participant.history.push(otherParticipant.id);
-  otherParticipant.history.push(participantId);
-
 }
+
+function random_digits(n) {
+  return Math.floor(Math.random() * 10 ** n).toString().padStart(n, "0");
+}
+
+httpServer.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`)
+});

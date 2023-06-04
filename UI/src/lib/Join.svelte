@@ -3,18 +3,16 @@
 	async function joinMeeting() {
 		const participant = {
 			name: participantName.value,
-			email: participantEmail.value
+			email: "dummyemail@example.coms"
 		};
-		const { meeting, participantId } = fetch('/api/join', {
+		const { meeting, participantId } = fetch('/api/join-meeting', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
 				meetingId: document.getElementById('meetingId').value,  // use this to get the meeting id from the form instead of the URL to allow for joining a meeting from the home page
-				participant: {
-					name: participantName
-				}
+				participant
 			})
 		}).then((res) => res.json());
 
