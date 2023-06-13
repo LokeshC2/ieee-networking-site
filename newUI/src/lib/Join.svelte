@@ -26,17 +26,16 @@
 				name: participantName
 			}
 		});
-
-    window.location.href = `/${meetingId}`;
 	}
 </script>
 
 <form on:submit|preventDefault={joinMeeting}>
 	<label for="meetingId">Meeting ID</label>
 	<input type="text" id="meetingId" name="meetingId" value={meetingId || ""} required />
-
+	<br>
 	<label for="participantName">Participant Name</label>
 	<input type="text" id="participantName" name="participantName" required />
+	<br>
 	<!-- <label for="participantEmail">Participant Email</label>
   <input type="text" id="participantEmail" name="participantEmail" /> -->
 
