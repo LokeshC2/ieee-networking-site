@@ -30,7 +30,7 @@
 
     message = "Waiting for server";
     setTimeout(() => {
-      socket = io("http://localhost:3000");
+      socket = io("http://localhost:5000");
 
       socket.on("connected", () => {
         message = "Connected to server";
