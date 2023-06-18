@@ -1,13 +1,13 @@
-const { createServer } = require('http');
+// const { createServer } = require('http');
 // const { Server } = require('socket.io');
 
-const httpServer = createServer();
-const socketServer = new Server(httpServer, { cors: { origin: '*' } });
-const PORT = process.env.PORT || 5000;
+// const httpServer = createServer();
+// const socketServer = new Server(httpServer, { cors: { origin: '*' } });
 
 const express = require('express')
 const cors = require('cors')
 const app = express();
+const PORT = process.env.PORT || 5000;
 app.use(cors())
 app.use(express.json())
 
@@ -212,7 +212,7 @@ function shuffle(meetingId, closingTime) {
       partner: null,
       closingTime,
     };
-    
+
     // socketServer.to(participantId).emit('no-partner', closingTime)
   }
 
@@ -223,7 +223,6 @@ function endMeeting(meetingId) {
   // socketServer.to(meetingId).emit('meeting-ended');
 }
 
-
-httpServer.listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
