@@ -212,6 +212,7 @@ function shuffle(meetingId, closingTime) {
       partner: null,
       closingTime,
     };
+    
     // socketServer.to(participantId).emit('no-partner', closingTime)
   }
 
