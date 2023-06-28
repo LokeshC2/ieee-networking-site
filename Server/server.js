@@ -242,7 +242,7 @@ async function shuffle(meetingId) {
 
   while (lobby.length > 1) {
     const participantId = lobby.pop();
-    const partnerId = findPartner(meetingId, participantId, lobby);
+    const partnerId = lobby.pop();
     meetings[meetingId].lobby = meetings[meetingId].lobby.filter(id => id !== participantId && id !== partnerId);
 
     const { roomId, token1, token2 } = await Room(meetingId, participantId, partnerId);

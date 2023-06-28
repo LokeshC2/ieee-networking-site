@@ -1,6 +1,6 @@
 const { createRoom, getToken } = require('./twilio');
 
-class Meeting {
+export class Meeting {
   meetingId = null;
   lobby = [];
   participants = {};
@@ -25,9 +25,9 @@ class Meeting {
     }, startTime - Date.now());
   }
 
-  addParticipant(participant) {
+  addParticipant(user) {
     const participantId = randomDigits(3);
-    const user = new User(participantId, participant.name, participant.email);
+    const user = new User(participantId, user.name, user.email);
     this.participants[participantId] = user;
   }
 
@@ -63,8 +63,8 @@ class Meeting {
       }
     }
 
-    if (this.lobby.length === 1) {
-      const participantId = this.lobby.pop();
+    if (tempLobby.length === 1) {
+      const participantId = tempLobby.pop();
       this.participants[participantId].history.push(null);
     }
 
@@ -105,13 +105,21 @@ class Meeting {
   }
 }
 
+const participantStatus = {
+  Lobby: 0,
+  Matched: 1,
+  Left: 2
+}
 
-class User {
+
+export class User {
   id = null;
   name = null;
   email = null;
+  status = participantStatus.Lobby;
   roomId = null;
   token = null;
+  res = null; // response object for sending messages
   history = [];
 
   constructor(id, name, email) {
