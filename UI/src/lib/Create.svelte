@@ -14,7 +14,7 @@
       meetingName,
       startTime,
       numShuffles,
-      shuffleDuration,
+      shuffleDuration: shuffleDuration * 1000 * 60,
       host: { name: hostName, email: hostEmail },
     };
 
