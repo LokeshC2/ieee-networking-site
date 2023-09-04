@@ -1,20 +1,25 @@
 <script>
-  export let meetingId;
+  import { meetingId } from "../stores/meeting";
 
-  let meetingName = "";
-  let startTime = "";
-  let numShuffles = "";
-  let shuffleDuration = "";
-  let host = "";
-  let hostName = "";
-  let hostEmail = "";
+  let meetingName = "wer";
+  let startTime = new Date(Date.now() + 1000 * 60 * 5)
+  let startDate = startTime.getDate() + "/" + startTime.getMonth() + "/" + startTime.getFullYear();
+  let startHour = startTime.getHours();
+  let startMinute = startTime.getMinutes();
+  let numShuffles = "5";
+  let shuffleDurationSec = "60";
+  let hostName = "loks";
+  let hostEmail = "lok@mail.com";
+
+  $: startTime = new Date(startDate + "T" + startHour + ":" + startMinute);
+
 
   function createMeeting() {
     const createData = {
       meetingName,
       startTime,
       numShuffles,
-      shuffleDuration: shuffleDuration * 1000 * 60,
+      shuffleDurationSec,
       host: { name: hostName, email: hostEmail },
     };
 
@@ -26,7 +31,8 @@
       .then((res) => res.json())
       .then((data) => {
         console.log(data);
-        meetingId = data.meetingId;
+        meetingId.set(data.meetingId);
+        history.pushState(null, null, "/meeting/" + data.meetingId);
       })
       .catch((err) => console.log(err));
   }
@@ -42,23 +48,40 @@
       name="meetingName"
       bind:value={meetingName} />
     <br />
+    <div class="date">
     <input
-      type="datetime-local"
-      placeholder="Start Time"
-      name="startTime"
-      bind:value={startTime} />
-    <br />
-    <input
-      type="number"
-      placeholder="Number of Shuffles"
-      name="numShuffles"
-      bind:value={numShuffles} />
-    <br />
+      type="date-local"
+      placeholder="Start Date"
+      name="startDate"
+      bind:value={startDate} />
     <input
       type="number"
-      placeholder="Shuffle Duration"
-      name="shuffleDuration"
-      bind:value={shuffleDuration} />
+      placeholder="Start Hour"
+      name="startHour"
+      min="0"
+      max="23"
+      bind:value={startHour} />
+    <input
+      type="number"
+      placeholder="Start Minute"
+      name="startMinute"
+      min="0"
+      max="59"
+      bind:value={startMinute} />
+    </div>
+    <br />
+    <div class="interval">
+      <input
+        type="number"
+        placeholder="Number of Shuffles"
+        name="numShuffles"
+        bind:value={numShuffles} />
+      <input
+        type="number"
+        placeholder="Shuffle Duration (in seconds)"
+        name="shuffleDuration"
+        bind:value={shuffleDurationSec} />
+    </div>
     <br />
     <input
       type="text"
@@ -75,3 +98,23 @@
     <button type="submit">Create</button>
   </form>
 </div>
+
+<style>
+  div.date,
+  div.interval {
+    flex-direction: row;
+  }
+  input {
+    margin: 5px;
+    width: 10rem;
+    display: inline;
+  }
+  input[name="startHour"],
+  input[name="startMinute"] {
+    width: 2.5rem;
+  }
+  input[name="numShuffles"],
+  input[name="shuffleDuration"] {
+    width: 5rem;
+  }
+</style>

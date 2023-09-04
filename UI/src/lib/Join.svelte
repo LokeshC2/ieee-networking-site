@@ -1,16 +1,20 @@
 <script>
+  import {
+    meetingId,
+    participantId,
+    status,
+    closingTime,
+    roomId,
+    token,
+    partnerId,
+  } from "../stores/meeting";
 
-  export let meetingId;
-  export let participantId;
-  export let status;
-  export let closingTime;
-
-  let participantName = "";
-  let participantEmail = "";
+  let participantName = "test";
+  let participantEmail = "test@test.co";
 
   function joinMeeting() {
     const joinData = {
-      meetingId,
+      meetingId: $meetingId,
       participant: { name: participantName, email: participantEmail },
     };
 
@@ -22,21 +26,27 @@
       .then((res) => res.json())
       .then((data) => {
         console.log(data);
-        participantId = data.participantId;
-        status = data.status;
-        closingTime = data.closingTime;
+        participantId.set(data.participantId);
+        status.set(data.status);
+        closingTime.set(data.closingTime);
+        if (status == "started") {
+          roomId.set(data.roomId);
+          token.set(data.token);
+          partnerId.set(data.partnerId);
+        }
       })
       .catch((err) => console.log(err));
   }
 </script>
 
 <div>
+  <h1>Join</h1>
   <form on:submit|preventDefault={joinMeeting}>
     <input
       type="text"
       placeholder="MeetingId"
       name="meetingId"
-      bind:value={meetingId}
+      bind:value={$meetingId}
       readonly />
 
     <input

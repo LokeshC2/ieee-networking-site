@@ -3,12 +3,20 @@
 
   export let meetingId;
   export let participantId;
+  export let status;
+  export let closingTime;
 
+  export let roomId;
+  export let token;
+  export let partnerId;
+
+  
+  console.info(meetingId, participantId, status, closingTime, roomId, token, partnerId);
   connectToMeeting(meetingId, participantId);
 
   function connectToMeeting(meetingId, participantId) {
     const eventSource = new EventSource(
-      `/api/match/${meetingId}/${participantId}`
+      `/api/match?meetingId=${meetingId}&participantId=${participantId}`
     );
 
     eventSource.onmessage = (event) => {

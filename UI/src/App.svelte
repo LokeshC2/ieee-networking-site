@@ -6,23 +6,21 @@
 
   import { onMount } from "svelte";
 
-  let meetingId, participantId, status, closingTime;
+  import { meetingId, participantId } from "./stores/meeting";
 
   onMount(() => {
-    meetingId = /meeting\/(\d{6})/.exec(location)?.[1];
-    if (meetingId) fetch(`/api/meeting?meetingId=${meetingId}`).then(res=>{if (!res.ok) {alert("Invalid meetingId"); location.href=location.origin}})
+    let mId = /meeting\/(\d{6})/.exec(location)?.[1];
+    if (mId) meetingId.set(mId);
   });
+
 </script>
 
 <main>
-  {#if meetingId && !participantId}
-    <Share bind:meetingId />
-    <Join bind:meetingId bind:participantId bind:status bind:closingTime />
+  {#if !$meetingId}
+    <Create /> <Join />
+  {:else if !$participantId}
+    <Share /> <Join />
   {:else}
-    <Create bind:meetingId />
-  {/if}
-
-  {#if meetingId && participantId}
-    <Meeting bind:meetingId bind:participantId bind:status bind:closingTime />
+    <Meeting />
   {/if}
 </main>

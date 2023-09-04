@@ -2,35 +2,47 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createRoom, getToken } = require('./twilio');
-const { randomDigits } = require('./utils');
+const { randomDigits, meetingIdValidator, participantIdValidator } = require('./utils');
 
 const app = express();
 const port = 5000;
+const meetings = {};
 
 app.use(cors());
 app.use(express.json());
-
-const meetings = {};
+app.use(meetingIdValidator(meetings));      // req.meetingId
+app.use(participantIdValidator(meetings));  // req.participantId
 
 app.get('/health', (req, res) => res.send('OK'));
 
-app.get('/meeting', (req, res) => {
+// ?meetingId=string => { meetingName, startTime, numShuffles, shuffleDuration, host, participants, lobby, closingTime }
+//                   => { error: string }
+app.get('/meetings', (req, res) => {
   const { meetingId } = req.query;
 
-  if (!meetings[meetingId]) {
-    res.status(404).send('Meeting not found');
+  if (!meetingId) {
+    res.json(meetings);
     return;
   }
 
-  res.json(meetings[meetingId]);
+  if (!meetings[meetingId]) {
+    res.status(404).json({ error: 'Meeting not found' });
+    return;
+  }
+
+  res.json({
+    ...meetings[meetingId],
+    participants: Object.keys(meetings[meetingId].participants),
+  });
 });
 
+// { meetingName, startTime, numShuffles, shuffleDuration, host } => { meetingId }
 app.post('/create', (req, res) => {
   const {
     meetingName, // string
     startTime, // timestamp
     numShuffles, // int
-    shuffleDuration, // int (ms)
+    shuffleDurationSec, // int (s)
     host // { name: string, email: string}
   } = req.body;
 
@@ -40,11 +52,11 @@ app.post('/create', (req, res) => {
     meetingName,
     startTime,
     numShuffles,
-    shuffleDuration,
+    shuffleDuration: shuffleDurationSec * 1000,
     host,
     participants: {},
     lobby: [],
-    closingTime: startTime + numShuffles * shuffleDuration,
+    closingTime: startTime + numShuffles * shuffleDurationSec*1000,
   };
 
   meetings[meetingId] = meeting;
@@ -57,22 +69,15 @@ app.post('/create', (req, res) => {
   console.log(`Meeting ${meetingId} created by ${host.name}`);
 });
 
+// { meetingId, participant : { name, email } } => { meetingId, participantId, status, closingTime }
+//                                              => { meetingId, participantId, status, closingTime, partnerId, roomId, token }
+//                                              => { error: string }
 app.post('/join', async (req, res) => {
   const {
     meetingId, // string
     participant, // { name: string, email: string }
   } = req.body;
-
-  if (!meetings[meetingId]) {
-    res.status(404).send('Meeting not found');
-    return;
-  }
-
-  if (meetings[meetingId].status === 'ended') {
-    res.status(400).send('Meeting has ended');
-    return;
-  }
-
+  
   const participantId = randomDigits(3);
 
   meetings[meetingId].participants[participantId] = {
@@ -107,19 +112,22 @@ app.post('/join', async (req, res) => {
   }
 });
 
-app.get('/match/:meetingId/:participantId', (req, res) => {
+
+// ?meetingId=string&participantId=string => SSE EventStream
+//                                        => {error: string}
+app.get('/match', (req, res) => {
   const {
     meetingId, // string
     participantId, // string
-  } = req.params;
+  } = req.query;
 
   if (!meetings[meetingId]) {
-    res.status(404).send('Meeting not found');
+    res.status(404).json({ error: 'Meeting not found' });
     return;
   }
 
   if (!meetings[meetingId].participants[participantId]) {
-    res.status(404).send('Participant not found');
+    res.status(404).json({ error: 'Participant not found' });
     return;
   }
 
@@ -145,6 +153,9 @@ app.get('/match/:meetingId/:participantId', (req, res) => {
   console.log(`Participant ${participantId} connected to sse ${meetingId}`);
 });
 
+// { meetingId, participantId } => Status 200
+//                              => Status 404 { error: string }
+
 app.post('/leave', (req, res) => {
   const {
     meetingId, // string
@@ -152,12 +163,12 @@ app.post('/leave', (req, res) => {
   } = req.body;
 
   if (!meetings[meetingId]) {
-    res.status(404).send('Meeting not found');
+    res.status(404).json({ error: 'Meeting not found' });
     return;
   }
 
   if (!meetings[meetingId].participants[participantId]) {
-    res.status(404).send('Participant not found');
+    res.status(404).json({ error: 'Participant not found' });
     return;
   }
 
@@ -170,9 +181,11 @@ app.post('/leave', (req, res) => {
 
   delete meetings[meetingId].participants[participantId];
 
-  res.send('OK');
+  res.sendStatus(200);
   console.log(`Participant ${participantId} left meeting ${meetingId}`);
 });
+
+// { meetingId, participantId } => { meetingId, participantId, roomId, token }
 
 app.post('/reconnect', (req, res) => {
   const {

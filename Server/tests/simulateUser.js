@@ -35,7 +35,7 @@ async function joinMeeting() {
 }
 
 joinMeeting().then(data => {
-  const eventSource = new EventSource(`http://localhost:5000/match/${data.meetingId}/${data.participantId}`);
+  const eventSource = new EventSource(`http://localhost:5000/match?meetingId=${data.meetingId}&participantId=${data.participantId}`);
 
   // Event listener for SSE messages
   eventSource.onmessage = event => {

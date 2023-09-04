@@ -8,7 +8,7 @@ async function createMeeting() {
       meetingName: 'Test Meeting',
       startTime: Date.now() + 10000, // Start the meeting 5 seconds from now
       numShuffles: 4,
-      shuffleDuration: 20000,
+      shuffleDurationSec: 20,
       host: { name: 'Host User', email: 'host@example.com' }
     };
 
