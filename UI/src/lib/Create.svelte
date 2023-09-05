@@ -1,20 +1,22 @@
 <script>
+  import DateTimePicker from "./DateTimePicker.svelte";
+
   export let meetingId;
 
-  let meetingName = "";
-  let startTime = "";
-  let numShuffles = "";
-  let shuffleDuration = "";
-  let host = "";
-  let hostName = "";
-  let hostEmail = "";
+  let meetingName = "stupid meeting";
+  let startTime = new Date();
+  startTime.setMinutes(startTime.getMinutes() + 5);
+  let numShuffles = 5;
+  let shuffleDurationMin = 5;
+  let hostName = "hostName";
+  let hostEmail = "hostEmail@email.com";
 
   function createMeeting() {
     const createData = {
       meetingName,
       startTime,
       numShuffles,
-      shuffleDuration: shuffleDuration * 1000 * 60,
+      shuffleDuration: shuffleDurationMin * 60 * 1000,  // convert to ms
       host: { name: hostName, email: hostEmail },
     };
 
@@ -40,37 +42,41 @@
       type="text"
       placeholder="Meeting Name"
       name="meetingName"
-      bind:value={meetingName} />
+      bind:value={meetingName}
+    />
     <br />
-    <input
-      type="datetime-local"
-      placeholder="Start Time"
+    <DateTimePicker
       name="startTime"
-      bind:value={startTime} />
+      bind:value={startTime}
+    />
     <br />
     <input
       type="number"
       placeholder="Number of Shuffles"
       name="numShuffles"
-      bind:value={numShuffles} />
+      bind:value={numShuffles}
+    />
     <br />
     <input
       type="number"
       placeholder="Shuffle Duration"
       name="shuffleDuration"
-      bind:value={shuffleDuration} />
+      bind:value={shuffleDurationMin}
+    />
     <br />
     <input
       type="text"
       placeholder="Host Name"
       name="hostName"
-      bind:value={hostName} />
+      bind:value={hostName}
+    />
     <br />
     <input
       type="text"
       placeholder="Host Email"
       name="hostEmail"
-      bind:value={hostEmail} />
+      bind:value={hostEmail}
+    />
     <br />
     <button type="submit">Create</button>
   </form>

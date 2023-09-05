@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test UI</title>
+  <style>
+    .container {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .meeting {
+      border: 1px solid black;
+      margin: 10px;
+      padding: 3px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Meetings</h1>
+  <hr>
+  <div id="root" class="container">
+  </div>
+  <hr>
+  <script>
+    setInterval(main, 500);
+    function main() {
+      fetch("http://localhost:5000/meetings")
+        .then(res => res.json())
+        .then(meetingIds => Promise.all(meetingIds.map(meetingId => {
+          return fetch("http://localhost:5000/meeting?meetingId=" + meetingId)
+            .then(res => res.json())
+            .then(meeting => {
+              const element = document.createElement("div");
+              element.className = "meeting";
+              element.style.whiteSpace = "pre";
+              replacer = (key, value) => {
+                if (key === "status") {
+                  element.style.backgroundColor = value === "created" ? "yellow" : value === "ended" ? "crimson" : "green";
+                }
+                if (key === "startTime" || key === "closingTime") {
+                  let date = new Date(value);
+                  //if date is today, show only time
+                  if (date.toDateString() === new Date().toDateString()) {
+                    return date.toLocaleTimeString();
+                  }
+                  return date.toLocaleString();
+                }
+                return value;
+              }
+              element.innerHTML = JSON.stringify(meeting, replacer, 2).slice(2, -1);
+              return element;
+            })
+        })))
+        .then(elements => {
+          const root = document.getElementById("root");
+          root.innerHTML = "";
+          elements.forEach(element => root.appendChild(element));
+        })
+    }
+  </script>
+</body>

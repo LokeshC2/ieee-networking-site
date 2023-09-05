@@ -14,6 +14,10 @@ const meetings = {};
 
 app.get('/health', (req, res) => res.send('OK'));
 
+app.get('/meetings', (req, res) => {
+  res.json(Object.keys(meetings));
+});
+
 app.get('/meeting', (req, res) => {
   const { meetingId } = req.query;
 
@@ -21,8 +25,9 @@ app.get('/meeting', (req, res) => {
     res.status(404).send('Meeting not found');
     return;
   }
-
-  res.json(meetings[meetingId]);
+  let meeting = meetings[meetingId];
+  let participantIds = Object.keys(meeting.participants);
+  return res.json({ ...meeting, participants: participantIds });
 });
 
 app.post('/create', (req, res) => {
@@ -44,6 +49,7 @@ app.post('/create', (req, res) => {
     host,
     participants: {},
     lobby: [],
+    partners: [],
     closingTime: startTime + numShuffles * shuffleDuration,
   };
 
@@ -199,6 +205,7 @@ app.post('/reconnect', (req, res) => {
 app.listen(port, () => console.log(`Server listening on port ${port}!`));
 
 async function Room(meetingId, participantId, partnerId) {
+  meetings[meetingId].partners.push([participantId, partnerId]);
   const roomName = `${meetingId}-${participantId}-${partnerId}`;
   const room = await createRoom(roomName);
   const roomId = room.sid;
@@ -232,6 +239,7 @@ function startMeeting(meetingId) {
 }
 
 async function shuffle(meetingId) {
+  meetings[meetingId].partners = [];
   const lobby = Object.keys(meetings[meetingId].participants);
 
   for (const participantId of meetings[meetingId].lobby) {
